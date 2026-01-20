@@ -1,0 +1,99 @@
+Using the 8087 with MBASIC and GWBASIC - Statistics of two Variables
+====================================================================
+Martin Hepperle, 2025
+
+This document describes a small assembler module which
+can be used with MBASIC and GWBASIC on a PC equipped
+with the an 8086/8088 and an 8087 coprocessor.
+
+The purpose of this example is to demonstrate how the 8087
+can be used from interpreted BASIC. It is not an example of
+most efficient programming.
+
+As these BASIC versions use their own MBF representation for
+floating point numbers, the code must convert between this MBF
+and the IEEE-754 format used by the 8087.
+
+The module contains three routines suitable for the statistical
+analysis of sampled data.
+They use BASIC arrays and scalar variables for input and output.
+Both input arrays X# and Y# MUST be declared as double (8 bytes).
+The output parameter S# MUST also be a double (8 bytes).
+The count N% MUST be an integer (2 bytes).
+
+Warning: the code expects, but does not test for the presence of
+an 80x87 coprocessor, therefore use it only if one is installed.
+Also no tests for over- or underflow are performed.
+
+Subroutines
+===========
+SUMX ( X#, N%, S# )
+   Sum the first N% elements in array X#.
+SUMXQ ( X#, N%, S# )
+   Sum the first N% elements in array X#.
+SUMXY ( X#, Y#, N%, S# )
+   Sum the products of the first N% elements in arrays X# and Y#.
+
+Parameter Passing
+=================
+X#() input,  8 byte double,  first element of array
+Y#() input,  8 byte double,  first element of array
+N%   input,  2 byte integer, element count
+S#   output, 8 byte double,  result
+
+In BASIC all parameters are passed by reference (as offsets into DS).
+
+The code can be BLOADed into an integer array of sufficient size.
+Therefore, the binary file starts with a 7 byte BLOAD header, which is
+not loaded into memory. The required integer array size can be calculated
+from the binary file size:
+file size = 430 bytes => (430-7)/2 - 1 => DIM CODE%(214) or larger
+
+
+Application Code Fragment
+--------------------------------------------------------------
+DIM CODE%(214) : REM INTEGER
+REM --- example:
+DIM X#(2500), Y#(2500)   : REM DOUBLE
+REM handle all 2501 elements from 0 to 2500
+N%=2501 : REM INTEGER
+REM preset array with some test values
+FOR K%=0 TO N%-1 : X#(K%)=K%-1250 : NEXT K%
+FOR K%=0 TO N%-1 : Y#(K%)=K%+1250 : NEXT K%
+REM --- prepare subroutine calls
+REM load module into memory
+BLOAD "STATSXY.BIN",VARPTR(CODE%(0))
+REM Note: any scalar variable allocation moves arrays!
+REM Therefore, allocate all scalar variables before 
+REM getting and using the code addresses 
+REM pre-allocate DOUBLE variables for results
+SX#=0# : SY# : SXQ#=0# : SYQ# : SXY#=0#
+REM preallocate INTEGER variables for addresses
+SUMX%=0 : SUMXQ%=0 : SUMXY%=0
+REM assign entry point addresses, 3 bytes apart
+SUMX%=VARPTR(CODE%(0))
+SUMXQ%=SUMX%+3 
+SUMXY%=SUMXQ%+3
+REM finally call the routines
+CALL SUMX%(X#(0),N%,SX#)
+CALL SUMXQ%(X#(0),N%,SXQ#)
+CALL SUMX%(Y#(0),N%,SY#)
+CALL SUMXQ%(Y#(0),N%,SYQ#)
+CALL SUMXY%(X#(0),Y#(0),N%,SXY#)
+--------------------------------------------------------------
+
+These three routines are used in the example program 
+STATSXY.BAS to implement these well known equations:
+
+mean(x) = SUM(xi,i=1..n) / n
+mean(y) = SUM(yi,i=1..n) / n
+
+sample standard deviation
+sdev(x) = SQRT((SUM(xi^2,i=1..n) - n*mean(x)^2) / (n-1))
+sdev(y) = SQRT((SUM(yi^2,i=1..n) - n*mean(y)^2) / (n-1))
+
+sample covariance
+cov (x,y) = (SUM(xi*yi,i=1..n) - SUM(xi,i=1..n)*SUM(yi,i=1..n) / n) / (n-1)
+
+correlation coefficient
+corr(x,y) = cov(x,y) / (sdev(x)*sdev(y))
