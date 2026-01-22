@@ -11,3 +11,5 @@ Examples for using BASIC with Assembler routines.
 * INTER(INT%,AX%,BX%,CX%,DX%,DS%,ES%,SI%,DI%) - call an interrupt with a given set of registers
 * TOUPPER(S$) - convert a string to upper case
 * TOLOWER(S$) - convert a string to lower case
+* CHKSUM%(S$,C%) - calculate the checksum over the characters in a string
+* BITCOUNT (I%) - count the '1'-bits in an integer
